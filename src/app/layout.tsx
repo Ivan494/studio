@@ -1,10 +1,10 @@
 import type {Metadata} from 'next';
-import { Geist_Sans as GeistSans } from 'next/font/google'; // Correct import for Geist Sans
+import { Inter } from 'next/font/google'; // Switch to Inter font
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
 
-const geistSans = GeistSans({ // Correct initialization
-  variable: '--font-geist-sans',
+const inter = Inter({ // Initialize Inter font
+  variable: '--font-inter', // Update font variable name
   subsets: ['latin'],
 });
 
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         {children}
         <Toaster />
       </body>
