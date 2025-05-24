@@ -7,30 +7,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LanguageSelector from "./LanguageSelector";
 import { supportedLanguages, type Language } from "@/lib/languages";
 import HoverTranslator from "./HoverTranslator";
 import { useToast } from "@/hooks/use-toast";
 
+export type HotkeyModifier = 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey';
+
 export interface AppSettings {
   defaultLanguage: string;
   customPrompt: string;
   enableHoverTranslate: boolean;
+  translateHotkeyKey: string;
+  undoHotkeyKey: string;
+  hotkeyModifier: HotkeyModifier;
 }
 
-const LS_SETTINGS_KEY = "linguaLens_settings_v2";
+const LS_SETTINGS_KEY = "linguaLens_settings_v3"; // Incremented version for new settings
+
+const modifierDisplayNames: Record<HotkeyModifier, string> = {
+  altKey: "Alt",
+  ctrlKey: "Ctrl",
+  metaKey: "Cmd/Win",
+  shiftKey: "Shift",
+};
 
 export default function LinguaLensApp() {
   const [settings, setSettings] = useState<AppSettings>({
     defaultLanguage: "es",
     customPrompt: "",
     enableHoverTranslate: true,
+    translateHotkeyKey: "t",
+    undoHotkeyKey: "u",
+    hotkeyModifier: "altKey",
   });
   
-  // Temporary state for unsaved changes in the form
   const [currentDefaultLanguage, setCurrentDefaultLanguage] = useState(settings.defaultLanguage);
   const [currentCustomPrompt, setCurrentCustomPrompt] = useState(settings.customPrompt);
   const [currentEnableHoverTranslate, setCurrentEnableHoverTranslate] = useState(settings.enableHoverTranslate);
+  const [currentTranslateHotkeyKey, setCurrentTranslateHotkeyKey] = useState(settings.translateHotkeyKey);
+  const [currentUndoHotkeyKey, setCurrentUndoHotkeyKey] = useState(settings.undoHotkeyKey);
+  const [currentHotkeyModifier, setCurrentHotkeyModifier] = useState<HotkeyModifier>(settings.hotkeyModifier);
 
   const { toast } = useToast();
 
@@ -38,16 +57,23 @@ export default function LinguaLensApp() {
     const storedSettings = localStorage.getItem(LS_SETTINGS_KEY);
     if (storedSettings) {
       try {
-        const parsedSettings = JSON.parse(storedSettings) as AppSettings;
-        setSettings(prevSettings => ({
-          ...prevSettings,
-          ...parsedSettings,
+        const parsedSettings = JSON.parse(storedSettings) as Partial<AppSettings>; // Use Partial for graceful migration
+        const newSettings: AppSettings = {
+          defaultLanguage: parsedSettings.defaultLanguage || "es",
+          customPrompt: parsedSettings.customPrompt || "",
           enableHoverTranslate: typeof parsedSettings.enableHoverTranslate === 'boolean' ? parsedSettings.enableHoverTranslate : true,
-        }));
+          translateHotkeyKey: parsedSettings.translateHotkeyKey || "t",
+          undoHotkeyKey: parsedSettings.undoHotkeyKey || "u",
+          hotkeyModifier: parsedSettings.hotkeyModifier || "altKey",
+        };
+        setSettings(newSettings);
         // Initialize form state with loaded settings
-        setCurrentDefaultLanguage(parsedSettings.defaultLanguage);
-        setCurrentCustomPrompt(parsedSettings.customPrompt);
-        setCurrentEnableHoverTranslate(parsedSettings.enableHoverTranslate);
+        setCurrentDefaultLanguage(newSettings.defaultLanguage);
+        setCurrentCustomPrompt(newSettings.customPrompt);
+        setCurrentEnableHoverTranslate(newSettings.enableHoverTranslate);
+        setCurrentTranslateHotkeyKey(newSettings.translateHotkeyKey);
+        setCurrentUndoHotkeyKey(newSettings.undoHotkeyKey);
+        setCurrentHotkeyModifier(newSettings.hotkeyModifier);
       } catch (error) {
         console.error("Failed to parse settings from localStorage", error);
         localStorage.removeItem(LS_SETTINGS_KEY); 
@@ -55,11 +81,13 @@ export default function LinguaLensApp() {
     }
   }, []);
 
-  // Update form fields if settings prop changes (e.g., after initial load)
   useEffect(() => {
     setCurrentDefaultLanguage(settings.defaultLanguage);
     setCurrentCustomPrompt(settings.customPrompt);
     setCurrentEnableHoverTranslate(settings.enableHoverTranslate);
+    setCurrentTranslateHotkeyKey(settings.translateHotkeyKey);
+    setCurrentUndoHotkeyKey(settings.undoHotkeyKey);
+    setCurrentHotkeyModifier(settings.hotkeyModifier);
   }, [settings]);
 
 
@@ -68,6 +96,9 @@ export default function LinguaLensApp() {
       defaultLanguage: currentDefaultLanguage,
       customPrompt: currentCustomPrompt,
       enableHoverTranslate: currentEnableHoverTranslate,
+      translateHotkeyKey: currentTranslateHotkeyKey.trim().toLowerCase() || "t",
+      undoHotkeyKey: currentUndoHotkeyKey.trim().toLowerCase() || "u",
+      hotkeyModifier: currentHotkeyModifier,
     };
     setSettings(newSettings);
     localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(newSettings));
@@ -76,6 +107,8 @@ export default function LinguaLensApp() {
       description: "Your preferences have been updated.",
     });
   };
+
+  const formattedModifier = modifierDisplayNames[settings.hotkeyModifier] || settings.hotkeyModifier;
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -87,13 +120,12 @@ export default function LinguaLensApp() {
           <CardTitle className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
             LinguaLens
           </CardTitle>
-          {/* Settings button removed */}
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-sm text-center text-muted-foreground">
             Hover over text on any webpage or select text, then press{" "}
-            <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Alt</kbd> + <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">T</kbd> to translate.
-            Press <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Alt</kbd> + <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">U</kbd> to undo the last translation.
+            <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">{formattedModifier}</kbd> + <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">{settings.translateHotkeyKey.toUpperCase()}</kbd> to translate.
+            Press <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">{formattedModifier}</kbd> + <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">{settings.undoHotkeyKey.toUpperCase()}</kbd> to undo the last translation.
           </p>
 
           <div className="border-t border-border pt-6 space-y-6">
@@ -119,6 +151,49 @@ export default function LinguaLensApp() {
                 Use <code>{"{{text}}"}</code> for the input text and <code>{"{{targetLanguage}}"}</code> for the target language.
               </p>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="hotkey-modifier" className="text-base font-medium">Modifier Key</Label>
+                <Select value={currentHotkeyModifier} onValueChange={(value) => setCurrentHotkeyModifier(value as HotkeyModifier)}>
+                  <SelectTrigger id="hotkey-modifier">
+                    <SelectValue placeholder="Select Modifier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="altKey">Alt</SelectItem>
+                    <SelectItem value="ctrlKey">Ctrl</SelectItem>
+                    <SelectItem value="metaKey">Cmd/Win</SelectItem>
+                    <SelectItem value="shiftKey">Shift</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="translate-hotkey" className="text-base font-medium">Translate Key</Label>
+                <Input 
+                  id="translate-hotkey" 
+                  type="text" 
+                  value={currentTranslateHotkeyKey}
+                  onChange={(e) => setCurrentTranslateHotkeyKey(e.target.value.slice(0,1))} // Allow only 1 char
+                  maxLength={1}
+                  className="bg-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="undo-hotkey" className="text-base font-medium">Undo Key</Label>
+                <Input 
+                  id="undo-hotkey" 
+                  type="text" 
+                  value={currentUndoHotkeyKey}
+                  onChange={(e) => setCurrentUndoHotkeyKey(e.target.value.slice(0,1))} // Allow only 1 char
+                  maxLength={1}
+                  className="bg-input"
+                />
+              </div>
+            </div>
+             <p className="text-xs text-muted-foreground">
+                Set your preferred hotkey combination for translations. Single character for Translate/Undo Key.
+            </p>
+
             <div className="flex items-center space-x-2 pt-2">
               <Switch
                 id="enable-hover-translate"
@@ -131,8 +206,7 @@ export default function LinguaLensApp() {
               </Label>
             </div>
             <p className="text-xs text-muted-foreground pl-8">
-                Translate text by hover/selection.
-                Press Alt+T to translate, Alt+U to undo last translation.
+                Translate text by hover/selection using your configured hotkeys.
             </p>
             <div className="flex justify-end">
               <Button onClick={handleSettingsSave} className="text-sm">Save Settings</Button>
@@ -146,8 +220,12 @@ export default function LinguaLensApp() {
         <HoverTranslator
           targetLanguage={settings.defaultLanguage}
           customPrompt={settings.customPrompt}
+          translateHotkeyKey={settings.translateHotkeyKey}
+          undoHotkeyKey={settings.undoHotkeyKey}
+          hotkeyModifier={settings.hotkeyModifier}
         />
       )}
     </div>
   );
 }
+
