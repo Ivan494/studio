@@ -18,12 +18,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import LanguageSelector from "./LanguageSelector";
 import { useToast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch"; // Added Switch import
+import { Switch } from "@/components/ui/switch";
 
 export interface Settings {
   defaultLanguage: string;
   customPrompt: string;
-  enableHoverTranslate: boolean; // Added new setting
+  enableHoverTranslate: boolean;
 }
 
 interface SettingsPanelProps {
@@ -41,7 +41,7 @@ export default function SettingsPanel({
 }: SettingsPanelProps) {
   const [defaultLanguage, setDefaultLanguage] = useState(currentSettings.defaultLanguage);
   const [customPrompt, setCustomPrompt] = useState(currentSettings.customPrompt);
-  const [enableHoverTranslate, setEnableHoverTranslate] = useState(currentSettings.enableHoverTranslate); // Added state for new setting
+  const [enableHoverTranslate, setEnableHoverTranslate] = useState(currentSettings.enableHoverTranslate);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,7 +101,8 @@ export default function SettingsPanel({
             </Label>
           </div>
            <p className="text-xs text-muted-foreground pl-8">
-              Translate text on the page by hovering over it or selecting it.
+              Translate text by hover/selection.
+              Press Alt+T to translate, Alt+U to undo last translation.
             </p>
         </div>
         <SheetFooter className="mt-8">
