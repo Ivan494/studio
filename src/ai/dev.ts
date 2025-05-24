@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/revert-translation.ts';
+import '@/ai/flows/customize-translation-prompt.ts';
+import '@/ai/flows/translate-text.ts';
