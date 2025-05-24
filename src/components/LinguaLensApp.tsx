@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -7,12 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Languages, Undo2, Loader2 } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
 import SettingsPanel, { type Settings as AppSettings } from "./SettingsPanel";
+import HoverTranslator from "./HoverTranslator"; // Added import
 import { supportedLanguages } from "@/lib/languages";
 import { useToast } from "@/hooks/use-toast";
 import { translateText as customizeTranslationFlow } from "@/ai/flows/customize-translation-prompt";
 import { revertTranslation as revertTranslationFlow } from "@/ai/flows/revert-translation";
 
-const LS_SETTINGS_KEY = "linguaLens_settings";
+const LS_SETTINGS_KEY = "linguaLens_settings_v2"; // Updated key to prevent conflicts with old settings
 
 export default function LinguaLensApp() {
   const [text, setText] = useState<string>("");
@@ -22,6 +24,7 @@ export default function LinguaLensApp() {
   const [settings, setSettings] = useState<AppSettings>({
     defaultLanguage: "es", // Default to Spanish
     customPrompt: "",
+    enableHoverTranslate: false, // Default for new setting
   });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -32,7 +35,13 @@ export default function LinguaLensApp() {
     const storedSettings = localStorage.getItem(LS_SETTINGS_KEY);
     if (storedSettings) {
       try {
-        setSettings(JSON.parse(storedSettings));
+        const parsedSettings = JSON.parse(storedSettings);
+        // Ensure new settings have defaults if not present in localStorage
+        setSettings(prevSettings => ({
+          ...prevSettings,
+          ...parsedSettings,
+          enableHoverTranslate: typeof parsedSettings.enableHoverTranslate === 'boolean' ? parsedSettings.enableHoverTranslate : false,
+        }));
       } catch (error) {
         console.error("Failed to parse settings from localStorage", error);
         localStorage.removeItem(LS_SETTINGS_KEY); // Clear corrupted data
@@ -48,8 +57,8 @@ export default function LinguaLensApp() {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
     if (isTranslated) {
-      setIsTranslated(false); // Text was modified, it's no longer the "direct translation"
-      setOriginalTextBeforeLastTranslation(null); // Clear snapshot
+      setIsTranslated(false); 
+      setOriginalTextBeforeLastTranslation(null); 
     }
   };
   
@@ -64,7 +73,7 @@ export default function LinguaLensApp() {
       const result = await customizeTranslationFlow({
         text: text,
         targetLanguage: settings.defaultLanguage,
-        customPrompt: settings.customPrompt || undefined, // Pass undefined if empty
+        customPrompt: settings.customPrompt || undefined,
       });
       setText(result.translatedText);
       setIsTranslated(true);
@@ -72,7 +81,6 @@ export default function LinguaLensApp() {
     } catch (error) {
       console.error("Translation error:", error);
       toast({ title: "Translation Failed", description: "Could not translate text. Please try again.", variant: "destructive" });
-      // Do not reset originalTextBeforeLastTranslation here, allow revert attempt on old text if needed
     } finally {
       setIsLoading(false);
     }
@@ -85,15 +93,9 @@ export default function LinguaLensApp() {
     }
     setIsLoading(true);
     try {
-      // The revertTranslationFlow is simple, we can do it client-side for speed
-      // For demo purposes, and to adhere to GenAI use, we call the flow.
-      // If this flow was more complex, this would be necessary.
-      // For this specific flow, client-side logic would be:
-      // setText(originalTextBeforeLastTranslation);
-      // setIsTranslated(false);
       const result = await revertTranslationFlow({
         originalText: originalTextBeforeLastTranslation,
-        translatedText: text, // current text is the translated one
+        translatedText: text, 
         shouldRevert: true,
       });
       setText(result.displayedText);
@@ -120,7 +122,10 @@ export default function LinguaLensApp() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <Card className="shadow-2xl bg-card/80 backdrop-blur-sm">
+      <Card 
+        className="shadow-2xl bg-card/80 backdrop-blur-sm"
+        data-no-hover-translate="true" // Prevent hover translator from translating this card
+      >
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <CardTitle className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
             LinguaLens
@@ -179,6 +184,14 @@ export default function LinguaLensApp() {
         currentSettings={settings}
         onSettingsSave={handleSettingsSave}
       />
+      
+      {/* Render HoverTranslator conditionally based on settings */}
+      {settings.enableHoverTranslate && (
+        <HoverTranslator
+          targetLanguage={settings.defaultLanguage}
+          customPrompt={settings.customPrompt}
+        />
+      )}
     </div>
   );
 }

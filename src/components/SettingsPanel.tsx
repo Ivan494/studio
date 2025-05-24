@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,10 +18,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import LanguageSelector from "./LanguageSelector";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch"; // Added Switch import
 
 export interface Settings {
   defaultLanguage: string;
   customPrompt: string;
+  enableHoverTranslate: boolean; // Added new setting
 }
 
 interface SettingsPanelProps {
@@ -38,15 +41,17 @@ export default function SettingsPanel({
 }: SettingsPanelProps) {
   const [defaultLanguage, setDefaultLanguage] = useState(currentSettings.defaultLanguage);
   const [customPrompt, setCustomPrompt] = useState(currentSettings.customPrompt);
+  const [enableHoverTranslate, setEnableHoverTranslate] = useState(currentSettings.enableHoverTranslate); // Added state for new setting
   const { toast } = useToast();
 
   useEffect(() => {
     setDefaultLanguage(currentSettings.defaultLanguage);
     setCustomPrompt(currentSettings.customPrompt);
+    setEnableHoverTranslate(currentSettings.enableHoverTranslate);
   }, [currentSettings, isOpen]);
 
   const handleSave = () => {
-    onSettingsSave({ defaultLanguage, customPrompt });
+    onSettingsSave({ defaultLanguage, customPrompt, enableHoverTranslate });
     toast({
       title: "Settings Saved",
       description: "Your preferences have been updated.",
@@ -85,6 +90,19 @@ export default function SettingsPanel({
               Use <code>{"{{text}}"}</code> for the input text and <code>{"{{targetLanguage}}"}</code> for the target language.
             </p>
           </div>
+          <div className="flex items-center space-x-2 pt-2">
+            <Switch
+              id="enable-hover-translate"
+              checked={enableHoverTranslate}
+              onCheckedChange={setEnableHoverTranslate}
+            />
+            <Label htmlFor="enable-hover-translate" className="text-base font-medium">
+              Enable Hover/Selection Translate
+            </Label>
+          </div>
+           <p className="text-xs text-muted-foreground pl-8">
+              Translate text on the page by hovering over it or selecting it.
+            </p>
         </div>
         <SheetFooter className="mt-8">
           <SheetClose asChild>
